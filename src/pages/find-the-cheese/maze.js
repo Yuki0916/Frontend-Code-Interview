@@ -14,6 +14,7 @@ const WALL_TYPE = {
 
 const BTN_STATUS = {
 	START: 'start',
+	WAIT: 'wait',
 	RESET: 'reset'
 };
 
@@ -36,7 +37,7 @@ function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function animateDFS(maze, setMaze) {
+async function animateDFS(maze, setMaze) {
 	let rows = maze.length;
 	let cols = maze[0].length;
 	let visited = Array.from(Array(rows), () => Array(cols).fill(false));
@@ -101,10 +102,11 @@ function animateDFS(maze, setMaze) {
 	for (let i = 0; i < rows; i++) {
 		for (let j = 0; j < cols; j++) {
 			if (maze[i][j] === WALL_TYPE.START) {
-				dfs(i, j);
+				return dfs(i, j);
 			}
 		}
 	}
+	return false;
 }
 
 const Maze = ({ index, data }) => {
@@ -113,14 +115,17 @@ const Maze = ({ index, data }) => {
 
 	const btnText = {
 		[BTN_STATUS.START]: 'Start',
+		[BTN_STATUS.WAIT]: 'Wait',
 		[BTN_STATUS.RESET]: 'Reset'
 	};
 
-	const handleClick = () => {
+	const handleClick = async () => {
 		if (btnStatus === BTN_STATUS.START) {
+			// TODO 暫時阻擋探索進行重置的行為
+			setBtnStatus(BTN_STATUS.WAIT);
+			await animateDFS(maze, setMaze);
 			setBtnStatus(BTN_STATUS.RESET);
-			animateDFS(maze, setMaze);
-		} else {
+		} else if (btnStatus === BTN_STATUS.RESET) {
 			setBtnStatus(BTN_STATUS.START);
 			setMaze(data);
 		}
