@@ -32,6 +32,10 @@ const Cell = ({ type }) => {
 	);
 };
 
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function animateDFS(maze, setMaze) {
 	let rows = maze.length;
 	let cols = maze[0].length;
@@ -45,41 +49,34 @@ function animateDFS(maze, setMaze) {
 		}
 	}
 
-	function dfs(x, y, callback) {
+	async function dfs(x, y) {
 		const isCrossLine = x < 0 || x >= rows || y < 0 || y >= cols;
+		if (isCrossLine) return false;
+
 		const isWall = tempMaze[x][y] === WALL_TYPE.WALL;
 		const isVisited = visited[x][y];
 		const isEnd = tempMaze[x][y] === WALL_TYPE.END;
 
-		if (isCrossLine || isWall || isVisited) return callback(false);
+		if (isWall || isVisited) return false;
 
 		if (isEnd) {
 			updateMaze(x, y, WALL_TYPE.START);
-			return callback(true);
+			return true;
 		}
 
 		updateMaze(x, y, WALL_TYPE.START);
 		visited[x][y] = true;
 
-		setTimeout(() => {
-			// 準備移動到下一個格子，將當前標記的格子從 'start' 改為 'visited'
-			updateMaze(x, y, WALL_TYPE.VISITED);
-			dfs(x - 1, y, success => {
-				if (success) return callback(true);
-				dfs(x + 1, y, success => {
-					if (success) return callback(true);
-					dfs(x, y - 1, success => {
-						if (success) return callback(true);
-						dfs(x, y + 1, success => {
-							if (success) return callback(true);
-							// 若無法走下去時，將當前格子標記為 'path'
-							updateMaze(x, y, WALL_TYPE.PATH);
-							callback(false);
-						});
-					});
-				});
-			});
-		}, 100);
+		await sleep(100);
+		updateMaze(x, y, WALL_TYPE.VISITED);
+
+		if (await dfs(x - 1, y)) return true;
+		if (await dfs(x + 1, y)) return true;
+		if (await dfs(x, y - 1)) return true;
+		if (await dfs(x, y + 1)) return true;
+
+		updateMaze(x, y, WALL_TYPE.PATH);
+		return false;
 
 		// TODO 動畫路線還是以DFS的方式走完後，暫時不知道如何處理倒退路線的動畫
 	}
@@ -88,7 +85,7 @@ function animateDFS(maze, setMaze) {
 	for (let i = 0; i < rows; i++) {
 		for (let j = 0; j < cols; j++) {
 			if (maze[i][j] === WALL_TYPE.START) {
-				dfs(i, j, success => !success && console.log('No path found.'));
+				dfs(i, j);
 			}
 		}
 	}
