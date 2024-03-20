@@ -41,6 +41,7 @@ function animateDFS(maze, setMaze) {
 	let cols = maze[0].length;
 	let visited = Array.from(Array(rows), () => Array(cols).fill(false));
 	let tempMaze = JSON.parse(JSON.stringify(maze));
+	let path = [];
 
 	function updateMaze(x, y, type) {
 		if (x >= 0 && x < rows && y >= 0 && y < cols) {
@@ -66,19 +67,34 @@ function animateDFS(maze, setMaze) {
 
 		updateMaze(x, y, WALL_TYPE.START);
 		visited[x][y] = true;
+		path.push([x, y]);
 
 		await sleep(100);
 		updateMaze(x, y, WALL_TYPE.VISITED);
 
-		if (await dfs(x - 1, y)) return true;
-		if (await dfs(x + 1, y)) return true;
-		if (await dfs(x, y - 1)) return true;
-		if (await dfs(x, y + 1)) return true;
+		const directions = [
+			[-1, 0],
+			[1, 0],
+			[0, -1],
+			[0, 1]
+		];
+		for (const [dx, dy] of directions) {
+			if (await dfs(x + dx, y + dy)) {
+				return true;
+			}
+			updateMaze(x, y, WALL_TYPE.VISITED);
+		}
 
+		path.pop();
 		updateMaze(x, y, WALL_TYPE.PATH);
+		if (path.length > 0) {
+			const [lx, ly] = path.at(-1);
+			updateMaze(lx, ly, WALL_TYPE.START);
+		}
+		await sleep(100);
 		return false;
 
-		// TODO 動畫路線還是以DFS的方式走完後，暫時不知道如何處理倒退路線的動畫
+		// TODO DFS 如何立即中斷停止探索並且恢復成初始畫面
 	}
 
 	// 尋找起點並開始DFS
