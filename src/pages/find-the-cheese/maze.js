@@ -32,45 +32,66 @@ const Cell = ({ type }) => {
 	);
 };
 
-function mazeDFS(maze) {
+function animateDFS(maze, setMaze) {
 	let rows = maze.length;
 	let cols = maze[0].length;
-	let resultMaze = JSON.parse(JSON.stringify(maze));
+	let visited = Array.from(Array(rows), () => Array(cols).fill(false));
+	let tempMaze = JSON.parse(JSON.stringify(maze));
 
-	function dfs(x, y) {
-		if (x < 0 || x >= rows || y < 0 || y >= cols) return false; // 檢查是否越界
-		if (resultMaze[x][y] === WALL_TYPE.WALL || resultMaze[x][y] === WALL_TYPE.VISITED) return false; // 檢查是否為牆壁或已訪問過
+	function updateMaze(x, y, type) {
+		if (x >= 0 && x < rows && y >= 0 && y < cols) {
+			tempMaze[x][y] = type;
+			setMaze(JSON.parse(JSON.stringify(tempMaze)));
+		}
+	}
 
-		if (resultMaze[x][y] === WALL_TYPE.END) {
-			// 檢查當前單元格是否為終點
-			resultMaze[x][y] = WALL_TYPE.START; // 抵達終點後將其改為起點
-			return true;
+	function dfs(x, y, callback) {
+		const isCrossLine = x < 0 || x >= rows || y < 0 || y >= cols;
+		const isWall = tempMaze[x][y] === WALL_TYPE.WALL;
+		const isVisited = visited[x][y];
+		const isEnd = tempMaze[x][y] === WALL_TYPE.END;
+
+		if (isCrossLine || isWall || isVisited) return callback(false);
+
+		if (isEnd) {
+			updateMaze(x, y, WALL_TYPE.START);
+			return callback(true);
 		}
 
-		// 	標記當前單元格為已訪問
-		resultMaze[x][y] = WALL_TYPE.VISITED;
+		updateMaze(x, y, WALL_TYPE.START);
+		visited[x][y] = true;
 
-		if (dfs(x - 1, y) || dfs(x + 1, y) || dfs(x, y - 1) || dfs(x, y + 1)) {
-			// 探索所有可能的方向
-			return true;
-		}
+		setTimeout(() => {
+			// 準備移動到下一個格子，將當前標記的格子從 'start' 改為 'visited'
+			updateMaze(x, y, WALL_TYPE.VISITED);
+			dfs(x - 1, y, success => {
+				if (success) return callback(true);
+				dfs(x + 1, y, success => {
+					if (success) return callback(true);
+					dfs(x, y - 1, success => {
+						if (success) return callback(true);
+						dfs(x, y + 1, success => {
+							if (success) return callback(true);
+							// 若無法走下去時，將當前格子標記為 'path'
+							updateMaze(x, y, WALL_TYPE.PATH);
+							callback(false);
+						});
+					});
+				});
+			});
+		}, 100);
 
-		// 如果在此路徑中未找到終點，則回溯並將路徑標記回 'path'
-		resultMaze[x][y] = WALL_TYPE.PATH;
-		return false;
+		// TODO 動畫路線還是以DFS的方式走完後，暫時不知道如何處理倒退路線的動畫
 	}
 
 	// 尋找起點並開始DFS
 	for (let i = 0; i < rows; i++) {
 		for (let j = 0; j < cols; j++) {
-			if (resultMaze[i][j] === WALL_TYPE.START && dfs(i, j)) {
-				return resultMaze;
+			if (maze[i][j] === WALL_TYPE.START) {
+				dfs(i, j, success => !success && console.log('No path found.'));
 			}
 		}
 	}
-
-	// 如果沒有找到路徑
-	return resultMaze;
 }
 
 const Maze = ({ index, data }) => {
@@ -85,7 +106,7 @@ const Maze = ({ index, data }) => {
 	const handleClick = () => {
 		if (btnStatus === BTN_STATUS.START) {
 			setBtnStatus(BTN_STATUS.RESET);
-			setMaze(mazeDFS(maze));
+			animateDFS(maze, setMaze);
 		} else {
 			setBtnStatus(BTN_STATUS.START);
 			setMaze(data);
