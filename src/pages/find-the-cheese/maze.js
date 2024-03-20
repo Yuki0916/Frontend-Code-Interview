@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import clsx from 'clsx';
 import { FaCheese } from 'react-icons/fa';
 import { LuRat } from 'react-icons/lu';
@@ -37,7 +37,7 @@ function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function animateDFS(maze, setMaze) {
+async function animateDFS(maze, setMaze, isExploring) {
 	let rows = maze.length;
 	let cols = maze[0].length;
 	let visited = Array.from(Array(rows), () => Array(cols).fill(false));
@@ -52,6 +52,8 @@ async function animateDFS(maze, setMaze) {
 	}
 
 	async function dfs(x, y) {
+		if (!isExploring()) return true;
+
 		const isCrossLine = x < 0 || x >= rows || y < 0 || y >= cols;
 		if (isCrossLine) return false;
 
@@ -86,6 +88,8 @@ async function animateDFS(maze, setMaze) {
 			updateMaze(x, y, WALL_TYPE.VISITED);
 		}
 
+		if (!isExploring()) return true;
+
 		path.pop();
 		updateMaze(x, y, WALL_TYPE.PATH);
 		if (path.length > 0) {
@@ -94,8 +98,6 @@ async function animateDFS(maze, setMaze) {
 		}
 		await sleep(100);
 		return false;
-
-		// TODO DFS 如何立即中斷停止探索並且恢復成初始畫面
 	}
 
 	// 尋找起點並開始DFS
@@ -112,22 +114,31 @@ async function animateDFS(maze, setMaze) {
 const Maze = ({ index, data }) => {
 	const [maze, setMaze] = useState(data);
 	const [btnStatus, setBtnStatus] = useState(BTN_STATUS.START);
+	const isExploring = useRef(false);
 
 	const btnText = {
 		[BTN_STATUS.START]: 'Start',
-		[BTN_STATUS.WAIT]: 'Wait',
+		[BTN_STATUS.WAIT]: 'Reset',
 		[BTN_STATUS.RESET]: 'Reset'
 	};
 
 	const handleClick = async () => {
 		if (btnStatus === BTN_STATUS.START) {
-			// TODO 暫時阻擋探索進行重置的行為
 			setBtnStatus(BTN_STATUS.WAIT);
-			await animateDFS(maze, setMaze);
-			setBtnStatus(BTN_STATUS.RESET);
+			isExploring.current = true;
+			await animateDFS(maze, setMaze, () => isExploring.current);
+			if (isExploring.current) {
+				setBtnStatus(BTN_STATUS.RESET);
+				isExploring.current = false;
+			} else {
+				setBtnStatus(BTN_STATUS.START);
+				setMaze(data);
+			}
 		} else if (btnStatus === BTN_STATUS.RESET) {
 			setBtnStatus(BTN_STATUS.START);
 			setMaze(data);
+		} else {
+			isExploring.current = false;
 		}
 	};
 	return (
