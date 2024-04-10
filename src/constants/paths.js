@@ -1,7 +1,7 @@
 // constants/paths.js
 const PATHS = {
 	HOME: '/',
-	MAZE: '/find-the-cheese'
-};
+	MAZE: '/find-the-cheese',
+}
 
-export default PATHS;
+export default PATHS
